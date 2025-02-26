@@ -8,10 +8,17 @@ from selenium.webdriver.chrome.options import Options
 import time
 import re
 
-# Function to extract Gig ID from Fiverr URL
+# ✅ Debugging: Print extracted gig ID before validating
 def extract_gig_id(gig_url):
-    match = re.search(r'/([^/]+)$', gig_url)  # Extracts last part of URL
-    return match.group(1) if match else None
+    match = re.search(r"fiverr\.com/[^/]+/([^/?#]+)", gig_url)
+
+    if match:
+        gig_id = match.group(1)
+        print("✅ Extracted Gig ID:", gig_id)  # ✅ Debugging print statement
+        return gig_id
+
+    print("❌ ERROR: Could not extract Gig ID from:", gig_url)
+    return None  # Return None if extraction fails
 
 
 # Function to get Fiverr search results and find gig ranking
