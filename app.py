@@ -10,8 +10,9 @@ import re
 
 # Function to extract Gig ID from Fiverr URL
 def extract_gig_id(gig_url):
-    match = re.search(r'\/([^\/]+)-\d+$', gig_url)
+    match = re.search(r'/([^/]+)$', gig_url)  # Extracts last part of URL
     return match.group(1) if match else None
+
 
 # Function to get Fiverr search results and find gig ranking
 def get_fiverr_rank(keyword, gig_id):
