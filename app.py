@@ -9,11 +9,16 @@ import time
 import re
 
 def extract_gig_id(gig_url):
-    match = re.search(r"fiverr\.com/[^/]+/([\w-]+)", gig_url)  # Handles more URL types
+    """
+    Extracts the Fiverr gig identifier (slug) from the given URL.
+    Supports both numeric and non-numeric gig URLs.
+    """
+    # ✅ Improved regex to capture all Fiverr gig URL types
+    match = re.search(r"fiverr\.com/[^/]+/([^/?#]+)", gig_url)
 
     if match:
         gig_id = match.group(1)
-        print("✅ Extracted Gig ID:", gig_id)  # ✅ Debugging print
+        print("✅ Extracted Gig ID:", gig_id)  # Debugging print
         return gig_id
 
     print("❌ ERROR: Could not extract Gig ID from:", gig_url)
