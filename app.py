@@ -17,12 +17,12 @@ def extract_gig_id(gig_url):
 # Function to get Fiverr search results and find gig ranking
 def get_fiverr_rank(keyword, gig_id):
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
+    chrome_options.binary_location = "/usr/bin/google-chrome"  # ✅ Manually set Chrome path
+    chrome_options.add_argument("--headless")  # Run without UI
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # ✅ Use manually installed ChromeDriver path
+    # ✅ Ensure ChromeDriver is used from the correct path
     service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
