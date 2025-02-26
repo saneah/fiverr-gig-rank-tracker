@@ -28,57 +28,39 @@ def extract_gig_id(gig_url):
 # Function to get Fiverr search results and find gig ranking
 def get_fiverr_rank(keyword, gig_id):
     chrome_options = Options()
-
-    # ✅ Explicitly set Chrome binary location
     chrome_options.binary_location = "/usr/bin/google-chrome"
-
-    chrome_options.add_argument("--headless")  # Run without UI
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # ✅ Force ChromeDriver path
     service = Service("/usr/bin/chromedriver")
-
-    # ✅ Use the correct executable locations
-    try:
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-    except Exception as e:
-        print(f"❌ ERROR: Could not start ChromeDriver: {e}")
-        return "ChromeDriver failed!"
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
     search_url = f"https://www.fiverr.com/search/gigs?query={keyword}"
     driver.get(search_url)
 
+    # ✅ Scroll down to load all results
+    body = driver.find_element(By.TAG_NAME, "body")
+    for _ in range(10):  # Scroll multiple times
+        body.send_keys(Keys.PAGE_DOWN)
+        time.sleep(1)
 
-    gig_found = False
+    # ✅ Wait for results to fully load
+    time.sleep(5)  
+
+    # ✅ Get all gig links from search results
+    gigs = driver.find_elements(By.CSS_SELECTOR, "a[href*='/mianawaiszafar/']")  
+
     gig_position = -1
-
-    for page in range(1, 6):  # Check up to 5 pages
-        time.sleep(3)
-
-        # Get page source and parse with BeautifulSoup
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        gigs = soup.find_all("a", class_="gig-link")
-
-        for index, gig in enumerate(gigs, start=1):
-            if gig_id in gig["href"]:
-                gig_found = True
-                gig_position = ((page - 1) * len(gigs)) + index
-                break
-
-        if gig_found:
-            break
-
-        # Click "Next Page" if exists
-        try:
-            next_page = driver.find_element(By.CSS_SELECTOR, "a[rel='next']")
-            next_page.click()
-        except:
+    for index, gig in enumerate(gigs, start=1):
+        gig_url = gig.get_attribute("href")
+        if gig_id in gig_url:
+            gig_position = index
             break
 
     driver.quit()
     
-    return gig_position if gig_found else "Not in first 5 pages"
+    return gig_position if gig_position != -1 else "Not in first 5 pages"
 
 # Streamlit UI
 st.title("🛠️ Fiverr Gig Rank Tracker")
