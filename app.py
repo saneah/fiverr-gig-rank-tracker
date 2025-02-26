@@ -1,84 +1,102 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
+import time
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-import time
-import re
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from PIL import Image
 
-def extract_gig_id(gig_url):
-    """
-    Extracts the Fiverr gig identifier (slug) from the given URL.
-    Supports both numeric and non-numeric gig URLs.
-    """
-    # ✅ Improved regex to capture all Fiverr gig URL types
-    match = re.search(r"fiverr\.com/[^/]+/([^/?#]+)", gig_url)
+# ✅ Configure Selenium to Use ChromeDriver
+chrome_options = Options()
+chrome_options.binary_location = "/usr/bin/google-chrome"  # ✅ Manually set Chrome binary path
+chrome_options.add_argument("--headless")  # Run without UI
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
 
-    if match:
-        gig_id = match.group(1)
-        print("✅ Extracted Gig ID:", gig_id)  # Debugging print
-        return gig_id
+service = Service("/usr/bin/chromedriver")  # ✅ Manually set ChromeDriver path
 
-    print("❌ ERROR: Could not extract Gig ID from:", gig_url)
-    return None
-
-
-# Function to get Fiverr search results and find gig ranking
-def get_fiverr_rank(keyword, gig_id):
-    chrome_options = Options()
-    chrome_options.binary_location = "/usr/bin/google-chrome"
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-
-    service = Service("/usr/bin/chromedriver")
+# ✅ Function to Find Fiverr Gig Rank and Take Screenshot
+def get_fiverr_rank(username, keyword):
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    search_url = f"https://www.fiverr.com/search/gigs?query={keyword}"
+    search_url = f"https://www.fiverr.com/search/gigs?query={keyword.replace(' ', '%20')}"
     driver.get(search_url)
 
-    # ✅ Scroll down to load all results
-    body = driver.find_element(By.TAG_NAME, "body")
-    for _ in range(10):  # Scroll multiple times
-        body.send_keys(Keys.PAGE_DOWN)
-        time.sleep(1)
-
-    # ✅ Wait for results to fully load
-    time.sleep(5)  
-
-    # ✅ Get all gig links from search results
-    gigs = driver.find_elements(By.CSS_SELECTOR, "a[href*='/mianawaiszafar/']")  
+    st.write("🔄 Fetching Fiverr search results... Please wait.")
 
     gig_position = -1
-    for index, gig in enumerate(gigs, start=1):
-        gig_url = gig.get_attribute("href")
-        if gig_id in gig_url:
-            gig_position = index
-            break
+    found_page = "Not Found"
+    gig_screenshot = None
+
+    for page in range(1, 6):  # ✅ Search up to 5 pages
+        time.sleep(3)  # ✅ Wait for page to load
+
+        # ✅ Scroll down to load all results
+        body = driver.find_element(By.TAG_NAME, "body")
+        for _ in range(10):
+            body.send_keys(Keys.PAGE_DOWN)
+            time.sleep(1)
+
+        # ✅ Find all gigs
+        gigs = driver.find_elements(By.CSS_SELECTOR, "a[href*='/"+username+"/']")
+
+        for index, gig in enumerate(gigs, start=1):
+            gig_url = gig.get_attribute("href")
+            if username in gig_url:
+                gig_position = ((page - 1) * len(gigs)) + index
+                found_page = f"Page {page}"
+
+                # ✅ Take Screenshot of the Gig
+                screenshot_path = f"screenshot_{username}_{keyword.replace(' ', '_')}.png"
+                driver.save_screenshot(screenshot_path)
+                gig_screenshot = screenshot_path
+
+                break
+
+        if gig_position != -1:
+            break  # ✅ Stop searching if gig is found
+
+        # ✅ Click "Next Page" if exists
+        try:
+            next_button = driver.find_element(By.CSS_SELECTOR, "a[rel='next']")
+            next_button.click()
+        except:
+            break  # ✅ No more pages
 
     driver.quit()
-    
-    return gig_position if gig_position != -1 else "Not in first 5 pages"
 
-# Streamlit UI
-st.title("🛠️ Fiverr Gig Rank Tracker")
-st.write("Enter your Fiverr Gig URL and the keyword you want to track.")
+    return gig_position, found_page, gig_screenshot
 
-# User Inputs
-gig_url = st.text_input("🔗 Fiverr Gig URL:", placeholder="https://www.fiverr.com/your-gig-url")
-keyword = st.text_input("🔍 Keyword to Search:", placeholder="e.g. logo design")
+# ✅ Streamlit UI Setup
+st.title("🎯 Fiverr Gig Rank Checker (Like Fiverrlytics)")
+st.write("Check your Fiverr gig ranking by entering your Fiverr username and keyword.")
 
+# ✅ User Inputs
+username = st.text_input("👤 Fiverr Username:", placeholder="e.g. mianawaiszafar")
+keyword = st.text_input("🔍 Target Keyword:", placeholder="e.g. Google Analytics Setup")
+
+# ✅ Run Fiverr Rank Check
 if st.button("Check Rank"):
-    if gig_url and keyword:
-        gig_id = extract_gig_id(gig_url)
-        
-        if gig_id:
-            st.write("🔄 Searching Fiverr for your gig... (This may take a few seconds)")
-            gig_rank = get_fiverr_rank(keyword, gig_id)
-            st.success(f"🎯 Your gig is at position: **{gig_rank}**")
+    if username and keyword:
+        rank, page_found, screenshot = get_fiverr_rank(username, keyword)
+
+        if rank != -1:
+            st.success(f"🎯 Your gig is at **position {rank}** on **{page_found}**!")
+            if screenshot and os.path.exists(screenshot):
+                st.image(Image.open(screenshot), caption="📸 Screenshot of Your Gig in Search Results")
         else:
-            st.error("⚠️ Invalid Fiverr gig URL. Please enter a correct URL.")
+            st.error("❌ Your gig was **not found in the first 5 pages**.")
+
+        # ✅ Disclaimer Message (Like Fiverrlytics)
+        st.markdown(
+            f"""
+            ⚠️ This analysis is based on **5 Fiverr search pages** fetched on **{time.strftime('%Y-%m-%d')}**.
+            Results may change due to personalization and other Fiverr metrics.
+
+            **Fiverrlytics does not guarantee accuracy**. Use at your own risk.
+            """
+        )
     else:
-        st.error("⚠️ Please enter both the Fiverr Gig URL and the keyword.")
+        st.error("⚠️ Please enter both your Fiverr username and target keyword.")
