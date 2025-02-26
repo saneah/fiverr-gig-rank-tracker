@@ -17,8 +17,14 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 
 service = Service("/usr/bin/chromedriver")  # ✅ Manually set ChromeDriver path
 
-# ✅ Function to Find Fiverr Gig Rank and Take Screenshot
 def get_fiverr_rank(username, keyword):
+    chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/google-chrome"
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     search_url = f"https://www.fiverr.com/search/gigs?query={keyword.replace(' ', '%20')}"
@@ -39,25 +45,28 @@ def get_fiverr_rank(username, keyword):
             body.send_keys(Keys.PAGE_DOWN)
             time.sleep(1)
 
-       # ✅ Extract all Fiverr gig links
-gigs = driver.find_elements(By.CSS_SELECTOR, "a[href]")
+        # ✅ Wait for gigs to load
+        try:
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href]")))
+        except:
+            print("⚠️ Warning: No gigs found in search results!")
 
-# ✅ Debug: Print extracted URLs
-all_gig_urls = [gig.get_attribute("href") for gig in gigs]
-print("✅ Extracted Gig URLs:", all_gig_urls)  # Debugging
+        # ✅ Extract all Fiverr gig links
+        gigs = driver.find_elements(By.CSS_SELECTOR, "a[href]")
+        all_gig_urls = [gig.get_attribute("href") for gig in gigs]
+        print("✅ Extracted Gig URLs:", all_gig_urls)  # Debugging
 
-for index, gig_url in enumerate(all_gig_urls, start=1):
-    if username in gig_url:
-        gig_position = index
-        found_page = f"Page {page}"
+        for index, gig_url in enumerate(all_gig_urls, start=1):
+            if username in gig_url:
+                gig_position = index
+                found_page = f"Page {page}"
 
-        # ✅ Take Screenshot
-        screenshot_path = f"screenshot_{username}_{keyword.replace(' ', '_')}.png"
-        driver.save_screenshot(screenshot_path)
-        gig_screenshot = screenshot_path
+                # ✅ Take Screenshot
+                screenshot_path = f"screenshot_{username}_{keyword.replace(' ', '_')}.png"
+                driver.save_screenshot(screenshot_path)
+                gig_screenshot = screenshot_path
 
-        break
-
+                break
 
         if gig_position != -1:
             break  # ✅ Stop searching if gig is found
@@ -70,8 +79,9 @@ for index, gig_url in enumerate(all_gig_urls, start=1):
             break  # ✅ No more pages
 
     driver.quit()
+    
+    return gig_position, found_page, gig_screenshot  # ✅ Now properly indented inside function
 
-    return gig_position, found_page, gig_screenshot
 
 # ✅ Streamlit UI Setup
 st.title("🎯 Fiverr Gig Rank Checker (Like Fiverrlytics)")
