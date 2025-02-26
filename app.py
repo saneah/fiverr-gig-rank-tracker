@@ -39,21 +39,25 @@ def get_fiverr_rank(username, keyword):
             body.send_keys(Keys.PAGE_DOWN)
             time.sleep(1)
 
-        # ✅ Find all gigs
-        gigs = driver.find_elements(By.CSS_SELECTOR, "a[href*='/"+username+"/']")
+       # ✅ Extract all Fiverr gig links
+gigs = driver.find_elements(By.CSS_SELECTOR, "a[href]")
 
-        for index, gig in enumerate(gigs, start=1):
-            gig_url = gig.get_attribute("href")
-            if username in gig_url:
-                gig_position = ((page - 1) * len(gigs)) + index
-                found_page = f"Page {page}"
+# ✅ Debug: Print extracted URLs
+all_gig_urls = [gig.get_attribute("href") for gig in gigs]
+print("✅ Extracted Gig URLs:", all_gig_urls)  # Debugging
 
-                # ✅ Take Screenshot of the Gig
-                screenshot_path = f"screenshot_{username}_{keyword.replace(' ', '_')}.png"
-                driver.save_screenshot(screenshot_path)
-                gig_screenshot = screenshot_path
+for index, gig_url in enumerate(all_gig_urls, start=1):
+    if username in gig_url:
+        gig_position = index
+        found_page = f"Page {page}"
 
-                break
+        # ✅ Take Screenshot
+        screenshot_path = f"screenshot_{username}_{keyword.replace(' ', '_')}.png"
+        driver.save_screenshot(screenshot_path)
+        gig_screenshot = screenshot_path
+
+        break
+
 
         if gig_position != -1:
             break  # ✅ Stop searching if gig is found
